@@ -288,6 +288,8 @@ def main():
             frame_count += 1
 
             # Optional: Limit runtime for testing
+            print("Number of frames:", frame_count)
+            print("Number of history:", len(history))
             if frame_count > 10000:
                 print("Reached frame limit, stopping.")
                 print(history)

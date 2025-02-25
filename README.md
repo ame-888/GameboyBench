@@ -70,7 +70,7 @@ You can modify the following parameters in `llm.py`:
 
 ## Project Structure
 
-- `llm.py`: Main script that handles the LLM integration and game loop
+- `agent_play.py`: Main script that handles the LLM integration and game loop
 - `gameboy_controller.py`: Interface to the GameBoy emulator
 - `.env`: Configuration file for API keys and ROM path
 

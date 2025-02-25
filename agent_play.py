@@ -149,6 +149,33 @@ def encode_image(image):
     return base64.b64encode(buffer).decode("utf-8")
 
 
+def save_screenshot(screen, screenshots_dir, screenshot_counter):
+    """Save a screenshot to the specified directory."""
+    os.makedirs(screenshots_dir, exist_ok=True)
+    cv2.imwrite(
+        os.path.join(screenshots_dir, f"screenshot_{screenshot_counter:04d}.png"),
+        screen,
+    )
+    return screenshot_counter + 1
+
+
+def display_screen(screen):
+    """Display the current game screen."""
+    cv2.namedWindow("GameBoy", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("GameBoy", 480, 432)
+    cv2.imshow("GameBoy", screen)
+    key = cv2.waitKey(1) & 0xFF
+    return key == ord("q")  # Return True if 'q' is pressed
+
+
+def check_progress(gameboy):
+    # Read badges
+    memory_value = gameboy.get_memory_value(0xD356)
+    badges_count = bin(memory_value).count("1")
+
+    print(f"Badges collected: {badges_count}")
+
+
 def main():
     # Set up command line argument parsing
     parser = argparse.ArgumentParser(description="Run Pokemon with LLM agent")
@@ -157,10 +184,10 @@ def main():
         "--speed", type=float, default=2.0, help="Emulation speed (default: 2.0)"
     )
     parser.add_argument(
-        "--frames",
+        "--interactions",
         type=int,
         default=10000,
-        help="Maximum number of frames to run (default: 10000)",
+        help="Maximum number of interactions  to run (default: 10000)",
     )
     args = parser.parse_args()
 
@@ -174,11 +201,11 @@ def main():
 
     # Get emulation speed from command line args
     emulation_speed = args.speed
-    max_frames = args.frames
+    max_interactions = args.interactions
 
     print(f"ROM path: {rom_path}")
     print(f"Emulation speed: {emulation_speed}x")
-    print(f"Max frames: {max_frames}")
+    print(f"Max interactions: {max_interactions}")
 
     # Initialize the GameBoy controller in headless mode
     gb = GameBoyController(
@@ -298,7 +325,6 @@ def main():
                     t.function.name for t in response.choices[0].message.tool_calls
                 ]
                 print("Tools choosen:", tool_names)
-
                 print("Number of frames:", frame_count)
                 print("Number of actions:", len(history) // 2)
 
@@ -335,39 +361,28 @@ def main():
                 else:
                     gb.tick(wait_frames)
 
-            cv2.namedWindow("GameBoy", cv2.WINDOW_NORMAL)
-            cv2.resizeWindow("GameBoy", 480, 432)
+            # Display screen every 20 frames
             if frame_count % 20 == 0:
                 screen = gb.get_screen_np()
-                # Display the image with fixed window size matching GameBoy resolution (160x144)
-
-                # Fix: Properly encode the image to base64
-                _, buffer = cv2.imencode(".png", screen)
-                base64_image = base64.b64encode(buffer).decode("utf-8")
-
-                cv2.imshow("GameBoy", screen)
-                # Check for key press to exit
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("q"):
+                # Check if user wants to quit
+                if display_screen(screen):
                     running = False
 
             # Save screenshot every 10 seconds
             current_time = time.time()
             if current_time - last_save_time > 10:
                 screen = gb.get_screen_np()
-                os.makedirs(screenshots_dir, exist_ok=True)
-                cv2.imwrite(
-                    os.path.join(
-                        screenshots_dir, f"screenshot_{screenshot_counter:04d}.png"
-                    ),
-                    screen,
+                screenshot_counter = save_screenshot(
+                    screen, screenshots_dir, screenshot_counter
                 )
-                screenshot_counter += 1
                 last_save_time = current_time
 
             frame_count += 1
-            if frame_count > max_frames:
-                print(f"Reached frame limit of {max_frames}, stopping.")
+            if len(history) % 2 == 100:
+                check_progress(gb)
+
+            if len(history) // 2 > max_interactions:
+                print(f"Reached frame limit of {max_interactions}, stopping.")
                 print(history)
                 running = False
 

@@ -46,5 +46,8 @@ class GameBoyController:
     def get_screen(self):
         return self.pyboy.screen.image
 
+    def get_memory_value(self, address):
+        return self.pyboy.get_memory_value(address)
+
     def close(self):
         self.pyboy.stop()

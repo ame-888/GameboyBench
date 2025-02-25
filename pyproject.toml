@@ -8,6 +8,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "matplotlib>=3.10.0",
     "numpy>=2.2.3",
+    "openai>=1.64.0",
     "opencv-python>=4.11.0.86",
     "pillow>=11.1.0",
     "pyboy>=2.5.1",

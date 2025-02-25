@@ -24,13 +24,13 @@ Here are some basic tips to help you navigate the game:
 - **Battles**: When in battles, use the A button (press_a) to select moves or confirm actions, and the B button (press_b) to cancel or go back. You can also use the arrow keys to navigate menus.
 - **Menus**: Press the Start button (press_start) to open the main menu, where you can manage your Pokémon, items, and save the game. Use the arrow keys and A button to navigate and select options.
 - **Interactions**: Press the A button to talk to people, read signs, or interact with objects in the environment.
-- **Progression**: Focus on collecting all 8 Gym badges, which will allow you to challenge the Elite Four. You’ll need to solve puzzles, defeat trainers, and make strategic decisions to succeed.
+- **Progression**: Focus on collecting all 8 Gym badges, which will allow you to challenge the Elite Four. You'll need to solve puzzles, defeat trainers, and make strategic decisions to succeed.
 
 You will receive the current game screen as an image with each request. Based on the screen and your previous actions, decide which function(s) to call next. You can call multiple functions in a single response to press multiple buttons simultaneously (e.g., 'press_up' and 'press_a' to move up while pressing A). Separate multiple function calls with commas, like 'press_up, press_a'.
 
 You will also see your last 100 interactions (frames, function calls and outcomes) to help you remember your recent actions and make better decisions.
 
-Always respond with the function(s) you want to call, such as 'press_up' or 'press_a, press_right'. If you’re unsure, make your best guess based on typical Pokémon gameplay. Remember, your goal is to explore, battle, and progress toward becoming the Pokémon Champion.
+Always respond with the function(s) you want to call, such as 'press_up' or 'press_a, press_right'. If you're unsure, make your best guess based on typical Pokémon gameplay. Remember, your goal is to explore, battle, and progress toward becoming the Pokémon Champion.
 """
 
 
@@ -157,7 +157,7 @@ def main():
         screenshot_counter = 0
 
         # Main loop parameters
-        N = 30  # Make a decision every 30 frames
+        N = 100  # Make a decision every 30 frames
         frame_count = 0
         running = True
         current_buttons = []  # Buttons to press for the current decision period
@@ -170,16 +170,21 @@ def main():
                 base64_image = encode_image(screen)
 
                 # Construct user message with past actions and current frame
-                user_content = [
-                    {
-                        "type": "text",
-                        "text": "This is the most recent screen of the game. Which button should you press next?",
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{base64_image}"},
-                    },
-                ]
+                user_content = {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "This is the most recent screen of the game. Which button should you press next?",
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}"
+                            },
+                        },
+                    ],
+                }
 
                 messages = [
                     {"role": "system", "content": system_prompt},
@@ -198,7 +203,7 @@ def main():
 
                 # Send request to LLM via OpenAI API
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",  # Use a vision-capable model
+                    model="grok-2-vision-latest",
                     messages=messages,
                     max_tokens=100,  # Allow for multiple function calls
                     tools=tools_definition,
@@ -259,7 +264,6 @@ def main():
                 # Fix: Properly encode the image to base64
                 _, buffer = cv2.imencode(".png", screen)
                 base64_image = base64.b64encode(buffer).decode("utf-8")
-                print(base64_image)
 
                 cv2.imshow("GameBoy", screen)
                 # Check for key press to exit
@@ -289,6 +293,8 @@ def main():
                 print(history)
                 running = False
 
+    except KeyboardInterrupt:
+        print("\nKeyboard interrupt detected. Stopping gracefully...")
     except Exception as e:
         print(f"Error: {e}")
     finally:

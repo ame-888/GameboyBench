@@ -137,7 +137,7 @@ def main():
         rom_path,
         headless=True,  # No display needed for LLM agent
         sound_emulated=False,  # Disable sound for simplicity
-        emulation_speed=0,  # Run at max speed (0 means unlimited)
+        emulation_speed=2,  # Run at max speed (0 means unlimited)
     )
 
     client = openai.OpenAI(
@@ -147,7 +147,7 @@ def main():
     try:
         print("Starting game...")
         gb.start()
-        gb.tick(15)  # Wait for game to load (1 second at 60 FPS)
+        gb.tick(60)  # Wait for game to load (1 second at 60 FPS)
 
         # Setup for screenshots with timestamped directory
         experiment_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

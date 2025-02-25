@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+import json
 import os
 import base64
+import traceback
 import cv2
 from gameboy_controller import GameBoyController
 import openai
@@ -13,9 +15,12 @@ import argparse  # Added for command line arguments
 load_dotenv()
 
 # Set up OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
+api_key = os.getenv("OPENAI_API_KEY")
+base_url = "https://api.x.ai/v1"
+
+if not api_key:
     raise ValueError("OPENAI_API_KEY not set in .env file")
+
 
 # Define the system prompt for the LLM
 system_prompt = """
@@ -205,9 +210,7 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
         emulation_speed=game_config.emulation_speed,
     )
 
-    client = openai.OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY"), base_url="https://api.x.ai/v1"
-    )
+    client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
     try:
         print("Starting game...")
@@ -221,11 +224,10 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
         screenshot_counter = 0
 
         # Decisions every 30 frames
-        N = 30
+        N = 15
         notes = ""
         frame_count = 0
         running = True
-        current_buttons = []  # Buttons to press for the current decision period
         history = []  # History of past actions
         wait_frames = 120
 
@@ -312,39 +314,35 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
                 print("Number of frames:", frame_count)
                 print("Number of actions:", len(history) // 2)
 
-                if "update_notes" in tool_names:
-                    notes = (
-                        response.choices[0]
-                        .message.tool_calls[tool_names.index("update_notes")]
-                        .function.arguments["notes"]
-                    )
+                while "update_notes" in tool_names:
+                    tool_call = response.choices[0].message.tool_calls[
+                        tool_names.index("update_notes")
+                    ]
 
-                    tool_names.remove("update_notes")
+                    try:
+                        notes = json.loads(tool_call.function.arguments)["notes"]
+                        tool_names.remove("update_notes")
+                    except json.JSONDecodeError as e:
+                        print(f"Error decoding JSON: {e}")
+                        print(tool_call.function.arguments)
 
-                if tool_names != ["wait"]:
+                if tool_names != ["wait"] and len(tool_names) > 0:
                     buttons_pressed = [
                         tools_map[t] for t in tool_names if t in tools_map
                     ]
 
-                    if len(buttons_pressed) > 0:
-                        current_buttons = buttons_pressed
-                        history.append(
-                            {
-                                "role": "assistant",
-                                "content": f"I press {' and'.join(buttons_pressed)}",
-                            }
-                        )
-                    else:
-                        current_buttons = []
-                        history.append(
-                            {"role": "assistant", "content": "I press no button"}
-                        )
+                    history.append(
+                        {
+                            "role": "assistant",
+                            "content": f"I press {' and'.join(buttons_pressed)}",
+                        }
+                    )
+                    gb.press_and_tick(buttons=buttons_pressed)
 
-                    gb.press_and_tick([tools_map[b] for b in current_buttons])
                 else:
                     gb.tick(wait_frames)
 
-            if frame_count % 20 == 0:
+            if frame_count % 2 == 0:
                 screen = gb.get_screen_np()  # Check if user wants to quit
                 if display_screen(screen):
                     running = False
@@ -370,6 +368,7 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
         print("\nKeyboard interrupt detected. Stopping gracefully...")
     except Exception as e:
         print(f"Error: {e}")
+        traceback.print_exc()
     finally:
         gb.close()
         print("Game closed.")

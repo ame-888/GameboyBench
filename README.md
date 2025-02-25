@@ -4,13 +4,6 @@
 
 This project uses an AI agent powered by a Large Language Model (LLM) to play GameBoy games on an emulator. While designed to work with various GameBoy titles, we initially focus on Pokémon Red as our test case. The agent receives the game screen as input, analyzes the current state, and decides which buttons to press to progress through the game. The agent can take notes and decide to wait as well
 
-## Features
-
-- Fully autonomous gameplay using LLM-based decision making
-- Visual processing of GameBoy screen captures
-- Configurable decision frequency and emulation speed
-- Automatic screenshot capture for monitoring progress
-- History tracking to provide context for decision making
 
 ## Requirements
 
@@ -45,7 +38,7 @@ The program will:
 - Initialize the GameBoy emulator with the specified ROM
 - Start the game and begin capturing screen frames
 - Send these frames to the LLM for analysis
-- Execute the button presses recommended by the LLM
+- Execute the button presses recommended by the LLM and take notes
 - Save screenshots periodically to track progress
 - Display the current game screen in a window
 
@@ -53,20 +46,22 @@ You can press 'q' in the display window to exit the program.
 
 ## Configuration
 
+```python
+
+@dataclass
+class GameConfig:
+    rom_path: str
+    max_steps: int
+    emulation_speed: float
+
+```
+
 You can modify the following parameters in `llm.py`:
-- `N`: How frequently the LLM makes decisions (in frames)
+- `max_steps`: How many steps the llm should take
 - `emulation_speed`: Controls how fast the game runs
 - Screenshot frequency (default: every 10 seconds)
 - Maximum runtime (default: 10,000 frames)
-
-## How It Works
-
-1. The GameBoy emulator runs the Pokémon ROM in headless mode
-2. Every N frames, the current screen is captured and encoded
-3. The screen image and recent history are sent to the LLM
-4. The LLM analyzes the game state and decides which buttons to press
-5. The emulator executes these button presses
-6. The process repeats, with the agent learning from its history
+- Eval function (currently only implemented for PokemonRed)
 
 ## Project Structure
 

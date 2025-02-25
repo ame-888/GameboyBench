@@ -140,7 +140,9 @@ def main():
         simulation_speed=0,  # Run at max speed (0 means unlimited)
     )
 
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = openai.OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY"), base_url="https://api.x.ai/v1"
+    )
 
     try:
         print("Starting game...")
@@ -215,7 +217,8 @@ def main():
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/png;base64,{base64_image}"
+                                    "url": f"data:image/png;base64,{base64_image}",
+                                    "detail": "high",
                                 },
                             },
                         ],
@@ -243,7 +246,7 @@ def main():
                     history.append(
                         {"role": "assistant", "content": "I press no button"}
                     )
-
+            print("Buttons pressed:", current_buttons)
             # Execute the current action
             gb.press_and_tick([tools_map[b] for b in current_buttons])
 

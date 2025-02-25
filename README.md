@@ -1,6 +1,6 @@
 # 🎮 Gambeboy eval
 
-![screenshot_0001](https://github.com/user-attachments/assets/538ca2fb-38ab-4dad-84dc-eb236be90c0b)
+<img width="1046" alt="Screenshot 2025-02-25 at 09 27 53" src="https://github.com/user-attachments/assets/d8894780-78a6-426a-9ffc-a139e10d5c69" />
 
 This project uses an AI agent powered by a Large Language Model (LLM) to play GameBoy games on an emulator. While designed to work with various GameBoy titles, we initially focus on Pokémon Red as our test case. The agent receives the game screen as input, analyzes the current state, and decides which buttons to press to progress through the game. The agent can take notes and decide to wait as well
 

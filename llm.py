@@ -152,7 +152,7 @@ def main():
         # Setup for screenshots with timestamped directory
         experiment_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         screenshots_dir = f"screenshots_{experiment_id}"
-        os.makedirs(screenshots_dir, exist_ok=True)
+
         last_save_time = time.time()
         screenshot_counter = 0
 
@@ -271,6 +271,7 @@ def main():
             current_time = time.time()
             if current_time - last_save_time > 10:
                 screen = gb.get_screen_np()
+                os.makedirs(screenshots_dir, exist_ok=True)
                 cv2.imwrite(
                     os.path.join(
                         screenshots_dir, f"screenshot_{screenshot_counter:04d}.png"
@@ -285,6 +286,7 @@ def main():
             # Optional: Limit runtime for testing
             if frame_count > 10000:
                 print("Reached frame limit, stopping.")
+                print(history)
                 running = False
 
     except Exception as e:
@@ -292,3 +294,7 @@ def main():
     finally:
         gb.close()
         print("Game closed.")
+
+
+if __name__ == "__main__":
+    main()

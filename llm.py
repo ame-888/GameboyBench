@@ -147,7 +147,7 @@ def main():
     try:
         print("Starting game...")
         gb.start()
-        gb.tick(60)  # Wait for game to load (1 second at 60 FPS)
+        gb.tick(15)  # Wait for game to load (1 second at 60 FPS)
 
         # Setup for screenshots with timestamped directory
         experiment_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -251,7 +251,12 @@ def main():
                     history.append(
                         {"role": "assistant", "content": "I press no button"}
                     )
-            print("Buttons pressed:", current_buttons)
+                print("Buttons pressed:", current_buttons)
+
+                # Optional: Limit runtime for testing
+                print("Number of frames:", frame_count)
+                print("Number of actions:", len(history) // 2)
+
             # Execute the current action
             gb.press_and_tick([tools_map[b] for b in current_buttons])
 
@@ -286,10 +291,6 @@ def main():
                 last_save_time = current_time
 
             frame_count += 1
-
-            # Optional: Limit runtime for testing
-            print("Number of frames:", frame_count)
-            print("Number of history:", len(history))
             if frame_count > 10000:
                 print("Reached frame limit, stopping.")
                 print(history)

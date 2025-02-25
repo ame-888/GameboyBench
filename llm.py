@@ -6,6 +6,7 @@ import openai
 import datetime
 import time
 from dotenv import load_dotenv
+import argparse  # Added for command line arguments
 
 # Load environment variables from .env file
 load_dotenv()
@@ -124,20 +125,42 @@ def encode_image(image):
 
 
 def main():
-    # Get ROM path from environment variable
-    rom_path = os.getenv("ROM_PATH")
+    # Set up command line argument parsing
+    parser = argparse.ArgumentParser(description="Run Pokemon with LLM agent")
+    parser.add_argument("--rom", type=str, help="Path to the ROM file")
+    parser.add_argument(
+        "--speed", type=float, default=2.0, help="Emulation speed (default: 2.0)"
+    )
+    parser.add_argument(
+        "--frames",
+        type=int,
+        default=10000,
+        help="Maximum number of frames to run (default: 10000)",
+    )
+    args = parser.parse_args()
+
+    # Get ROM path from command line args or environment variable
+    rom_path = args.rom or os.getenv("ROM_PATH")
     if not rom_path:
-        print("Error: ROM_PATH not set in .env file")
+        print(
+            "Error: ROM path not provided. Use --rom argument or set ROM_PATH in .env file"
+        )
         return
 
-    print("ROM path:", rom_path)
+    # Get emulation speed from command line args
+    emulation_speed = args.speed
+    max_frames = args.frames
+
+    print(f"ROM path: {rom_path}")
+    print(f"Emulation speed: {emulation_speed}x")
+    print(f"Max frames: {max_frames}")
 
     # Initialize the GameBoy controller in headless mode
     gb = GameBoyController(
         rom_path,
         headless=True,  # No display needed for LLM agent
         sound_emulated=False,  # Disable sound for simplicity
-        emulation_speed=2,  # Run at max speed (0 means unlimited)
+        emulation_speed=emulation_speed,  # Use the provided emulation speed
     )
 
     client = openai.OpenAI(
@@ -291,8 +314,8 @@ def main():
                 last_save_time = current_time
 
             frame_count += 1
-            if frame_count > 10000:
-                print("Reached frame limit, stopping.")
+            if frame_count > max_frames:
+                print(f"Reached frame limit of {max_frames}, stopping.")
                 print(history)
                 running = False
 

@@ -9,17 +9,19 @@ import openai
 import datetime
 import time
 from dotenv import load_dotenv
-import argparse  # Added for command line arguments
+import argparse
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Set up OpenAI API key
-api_key = os.getenv("OPENAI_API_KEY")
-base_url = "https://api.x.ai/v1"
+# set up key and base url
+API_KEY = os.getenv("API_KEY")
+BASE_URL = None
+MODEL = "gpt-4o-mini-2024-07-18"
+# MODEL = "grok-2-vision-latest"
+# base_url = "https://api.x.ai/v1"
 
-if not api_key:
-    raise ValueError("OPENAI_API_KEY not set in .env file")
+if not API_KEY:
+    raise ValueError("API_KEY not set in .env file")
 
 
 # Define the system prompt for the LLM
@@ -210,7 +212,7 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
         emulation_speed=game_config.emulation_speed,
     )
 
-    client = openai.OpenAI(api_key=api_key, base_url=base_url)
+    client = openai.OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
     try:
         print("Starting game...")
@@ -223,16 +225,16 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
         last_save_time = time.time()
         screenshot_counter = 0
 
-        # Decisions every 30 frames
-        N = 15
+        # Decisions every 60 frames
+        decision_interval = 60
         notes = ""
         frame_count = 0
         running = True
         history = []  # History of past actions
-        wait_frames = 120
+        wait_frames = 2 * decision_interval
 
         while running:
-            if frame_count % N == 0:
+            if frame_count % decision_interval == 0:
                 screen = gb.get_screen_np()
                 base64_image = encode_image(screen)
 
@@ -280,7 +282,7 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
                 messages.append(user_content)
 
                 response = client.chat.completions.create(
-                    model="grok-2-vision-latest",
+                    model=MODEL,
                     messages=messages,
                     max_tokens=100,  # Allow for multiple function calls
                     tools=tools_definition,
@@ -310,7 +312,10 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
                 tool_names = [
                     t.function.name for t in response.choices[0].message.tool_calls
                 ]
+
                 print("Tools choosen:", tool_names)
+                if "update_notes" in tool_names:
+                    print(f"Updating notes to: {notes}")
                 print("Number of frames:", frame_count)
                 print("Number of actions:", len(history) // 2)
 
@@ -341,6 +346,9 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
 
                 else:
                     gb.tick(wait_frames)
+
+            else:
+                gb.tick(1)
 
             if frame_count % 2 == 0:
                 screen = gb.get_screen_np()  # Check if user wants to quit

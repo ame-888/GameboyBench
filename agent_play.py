@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 import json
 import os
@@ -16,9 +17,9 @@ load_dotenv()
 # set up key and base url
 API_KEY = os.getenv("API_KEY")
 BASE_URL = None
-MODEL = "gpt-4o-mini-2024-07-18"
-# MODEL = "grok-2-vision-latest"
-# base_url = "https://api.x.ai/v1"
+# MODEL = "gpt-4o-mini-2024-07-18"
+MODEL = "grok-2-vision-latest"
+BASE_URL = "https://api.x.ai/v1"
 
 if not API_KEY:
     raise ValueError("API_KEY not set in .env file")
@@ -203,8 +204,7 @@ def check_progress(gameboy):
     print(f"Badges collected: {badges_count}")
 
 
-def run_game(game_config: GameConfig, eval_func, eval_interval=100):
-
+async def run_game(game_config: GameConfig, eval_func, eval_interval=100):
     gb = GameBoyController(
         game_config.rom_path,
         headless=True,
@@ -212,7 +212,7 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
         emulation_speed=game_config.emulation_speed,
     )
 
-    client = openai.OpenAI(api_key=API_KEY, base_url=BASE_URL)
+    client = openai.AsyncOpenAI(api_key=API_KEY, base_url=BASE_URL)
 
     try:
         print("Starting game...")
@@ -281,7 +281,7 @@ def run_game(game_config: GameConfig, eval_func, eval_interval=100):
 
                 messages.append(user_content)
 
-                response = client.chat.completions.create(
+                response = await client.chat.completions.create(
                     model=MODEL,
                     messages=messages,
                     max_tokens=100,  # Allow for multiple function calls
@@ -416,7 +416,7 @@ def main():
         emulation_speed=emulation_speed,
     )
 
-    run_game(game_config, check_progress_pokemon_red)
+    asyncio.run(run_game(game_config, check_progress_pokemon_red))
 
 
 if __name__ == "__main__":

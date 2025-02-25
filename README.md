@@ -1,5 +1,7 @@
 # Pokemon eval
 
+![screenshot_0001](https://github.com/user-attachments/assets/538ca2fb-38ab-4dad-84dc-eb236be90c0b)
+
 This project uses an AI agent powered by a Large Language Model (LLM) to play Pokémon Red on a GameBoy emulator. The agent receives the game screen as input, analyzes the current state, and decides which buttons to press to progress through the game.
 
 ## Features

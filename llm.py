@@ -137,7 +137,7 @@ def main():
         rom_path,
         headless=True,  # No display needed for LLM agent
         sound_emulated=False,  # Disable sound for simplicity
-        simulation_speed=0,  # Run at max speed (0 means unlimited)
+        emulation_speed=0,  # Run at max speed (0 means unlimited)
     )
 
     client = openai.OpenAI(
@@ -262,7 +262,7 @@ def main():
 
             cv2.namedWindow("GameBoy", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("GameBoy", 480, 432)
-            if frame_count % 2 == 0:
+            if frame_count % 20 == 0:
                 screen = gb.get_screen_np()
                 # Display the image with fixed window size matching GameBoy resolution (160x144)
 

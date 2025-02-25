@@ -10,7 +10,7 @@ class GameBoyController:
         rom_path,
         headless=False,
         sound_emulated=False,
-        simulation_speed=1,
+        emulation_speed=1,
     ):
         """Initialize the GameBoy emulator with the specified ROM."""
         self.pyboy = PyBoy(
@@ -18,7 +18,7 @@ class GameBoyController:
             window="null" if headless else "SDL2",
             sound_emulated=sound_emulated,
         )
-        self.pyboy.set_emulation_speed(1)
+        self.pyboy.set_emulation_speed(emulation_speed)
 
     def start(self):
         """Start the emulator."""
@@ -31,11 +31,13 @@ class GameBoyController:
 
     def press_and_tick(self, buttons: List[str], frames=5):
         for button in buttons:
+            print(f"Pressing {button}")
             self.pyboy.button_press(button)
 
         self.tick(frames)
 
         for button in buttons:
+            print(f"Releasing {button}")
             self.pyboy.button_release(button)
 
     def get_screen_np(self):

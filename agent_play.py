@@ -16,8 +16,6 @@ load_dotenv()
 
 # set up key and base url
 API_KEY = os.getenv("API_KEY")
-BASE_URL = None
-# MODEL = "gpt-4o-mini-2024-07-18"
 MODEL = "grok-2-vision-latest"
 BASE_URL = "https://api.x.ai/v1"
 

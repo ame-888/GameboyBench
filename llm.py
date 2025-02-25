@@ -151,7 +151,7 @@ def main():
 
         # Setup for screenshots with timestamped directory
         experiment_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        screenshots_dir = f"screenshots_{experiment_id}"
+        screenshots_dir = f"screenshots/{experiment_id}"
 
         last_save_time = time.time()
         screenshot_counter = 0

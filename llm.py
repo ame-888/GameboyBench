@@ -30,6 +30,7 @@ Here are some basic tips to help you navigate the game:
 You will receive the current game screen as an image with each request. Based on the screen and your previous actions, decide which function(s) to call next. You can call multiple functions in a single response to press multiple buttons simultaneously (e.g., 'press_up' and 'press_a' to move up while pressing A). Separate multiple function calls with commas, like 'press_up, press_a'.
 
 You will also see your last 100 interactions (frames, function calls and outcomes) to help you remember your recent actions and make better decisions.
+You have a space for notes that you can use to remember things and update as you play.
 
 Always respond with the function(s) you want to call, such as 'press_up' or 'press_a, press_right'. If you're unsure, make your best guess based on typical Pokémon gameplay. Remember, your goal is to explore, battle, and progress toward becoming the Pokémon Champion.
 """
@@ -115,6 +116,30 @@ tools_definition = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "wait",
+            "description": "Wait for a specified number of frames",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_notes",
+            "description": "Update your notes in the knowledge base. Notes are limited to 2000 characters. Notes replace the previous notes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "notes": {
+                        "type": "string",
+                        "description": "The notes to update the knowledge base with",
+                    }
+                },
+            },
+        },
+    },
 ]
 
 
@@ -181,10 +206,12 @@ def main():
 
         # Main loop parameters
         N = 100  # Make a decision every 30 frames
+        notes = ""
         frame_count = 0
         running = True
         current_buttons = []  # Buttons to press for the current decision period
         history = []  # History of past actions
+        wait_frames = 120
 
         while running:
             if frame_count % N == 0:
@@ -222,6 +249,18 @@ def main():
                     )
 
                 messages.extend(history[-100:])
+
+                history.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your current notes are " + notes
+                            if len(notes) > 0
+                            else "You do not have any notes yet. Use the update_notes function to add notes."
+                        ),
+                    }
+                )
+
                 messages.append(user_content)
 
                 # Send request to LLM via OpenAI API
@@ -255,33 +294,46 @@ def main():
 
                 # Parse the LLM's response for multiple functions
 
-                buttons_pressed = [
-                    t.function.name
-                    for t in response.choices[0].message.tool_calls
-                    if t.function.name in tools_map
+                tool_names = [
+                    t.function.name for t in response.choices[0].message.tool_calls
                 ]
+                print("Tools choosen:", tool_names)
 
-                if len(buttons_pressed) > 0:
-                    current_buttons = buttons_pressed
-                    history.append(
-                        {
-                            "role": "assistant",
-                            "content": f"I press {' and'.join(buttons_pressed)}",
-                        }
-                    )
-                else:
-                    current_buttons = []
-                    history.append(
-                        {"role": "assistant", "content": "I press no button"}
-                    )
-                print("Buttons pressed:", current_buttons)
-
-                # Optional: Limit runtime for testing
                 print("Number of frames:", frame_count)
                 print("Number of actions:", len(history) // 2)
 
-            # Execute the current action
-            gb.press_and_tick([tools_map[b] for b in current_buttons])
+                if "update_notes" in tool_names:
+                    notes = (
+                        response.choices[0]
+                        .message.tool_calls[tool_names.index("update_notes")]
+                        .function.arguments["notes"]
+                    )
+
+                    tool_names.remove("update_notes")
+
+                if tool_names != ["wait"]:
+                    buttons_pressed = [
+                        tools_map[t] for t in tool_names if t in tools_map
+                    ]
+
+                    if len(buttons_pressed) > 0:
+                        current_buttons = buttons_pressed
+                        history.append(
+                            {
+                                "role": "assistant",
+                                "content": f"I press {' and'.join(buttons_pressed)}",
+                            }
+                        )
+                    else:
+                        current_buttons = []
+                        history.append(
+                            {"role": "assistant", "content": "I press no button"}
+                        )
+
+                    # Execute the current action
+                    gb.press_and_tick([tools_map[b] for b in current_buttons])
+                else:
+                    gb.tick(wait_frames)
 
             cv2.namedWindow("GameBoy", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("GameBoy", 480, 432)

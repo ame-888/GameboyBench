@@ -3,6 +3,7 @@ import dotenv
 import os
 import random
 import cv2
+import base64
 
 dotenv.load_dotenv()
 
@@ -76,8 +77,9 @@ def main():
                 screen = gb.get_screen_np()
                 # Display the image with fixed window size matching GameBoy resolution (160x144)
 
-                base64_image = cv2.imencode(".png", screen)[1].tobytes()
-                base64_image = base64_image.decode("utf-8")
+                # Fix: Properly encode the image to base64
+                _, buffer = cv2.imencode(".png", screen)
+                base64_image = base64.b64encode(buffer).decode("utf-8")
                 print(base64_image)
 
                 cv2.imshow("GameBoy", screen)

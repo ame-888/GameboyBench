@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os
 import base64
 import cv2
@@ -57,7 +58,7 @@ tools_definition = [
         "function": {
             "name": "press_up",
             "description": "Press the up button on the GameBoy",
-            "parameters": {"type": "object", "properties": {}},  # No parameters needed
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
@@ -143,14 +144,34 @@ tools_definition = [
 ]
 
 
+@dataclass
+class GameConfig:
+    rom_path: str
+    max_steps: int
+    emulation_speed: float
+
+
+# Game Configuration
+GAME_CONFIG = {
+    "rom_path": None,
+    "max_steps": 10000,
+    "emulation_speed": 2.0,  # Emulation speed multiplier
+}
+
+
+def check_progress_pokemon_red(gameboy):
+    """Check the player's progress by counting collected badges."""
+    memory_value = gameboy.get_memory_value(0xD356)
+    badges_count = bin(memory_value).count("1")
+    print(f"N Badges collected: {badges_count}")
+
+
 def encode_image(image):
-    """Encode a NumPy image array to base64 string."""
     _, buffer = cv2.imencode(".png", image)
     return base64.b64encode(buffer).decode("utf-8")
 
 
 def save_screenshot(screen, screenshots_dir, screenshot_counter):
-    """Save a screenshot to the specified directory."""
     os.makedirs(screenshots_dir, exist_ok=True)
     cv2.imwrite(
         os.path.join(screenshots_dir, f"screenshot_{screenshot_counter:04d}.png"),
@@ -160,7 +181,6 @@ def save_screenshot(screen, screenshots_dir, screenshot_counter):
 
 
 def display_screen(screen):
-    """Display the current game screen."""
     cv2.namedWindow("GameBoy", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("GameBoy", 480, 432)
     cv2.imshow("GameBoy", screen)
@@ -176,43 +196,13 @@ def check_progress(gameboy):
     print(f"Badges collected: {badges_count}")
 
 
-def main():
-    # Set up command line argument parsing
-    parser = argparse.ArgumentParser(description="Run Pokemon with LLM agent")
-    parser.add_argument("--rom", type=str, help="Path to the ROM file")
-    parser.add_argument(
-        "--speed", type=float, default=2.0, help="Emulation speed (default: 2.0)"
-    )
-    parser.add_argument(
-        "--interactions",
-        type=int,
-        default=10000,
-        help="Maximum number of interactions  to run (default: 10000)",
-    )
-    args = parser.parse_args()
+def run_game(game_config: GameConfig, eval_func, eval_interval=100):
 
-    # Get ROM path from command line args or environment variable
-    rom_path = args.rom or os.getenv("ROM_PATH")
-    if not rom_path:
-        print(
-            "Error: ROM path not provided. Use --rom argument or set ROM_PATH in .env file"
-        )
-        return
-
-    # Get emulation speed from command line args
-    emulation_speed = args.speed
-    max_interactions = args.interactions
-
-    print(f"ROM path: {rom_path}")
-    print(f"Emulation speed: {emulation_speed}x")
-    print(f"Max interactions: {max_interactions}")
-
-    # Initialize the GameBoy controller in headless mode
     gb = GameBoyController(
-        rom_path,
-        headless=True,  # No display needed for LLM agent
-        sound_emulated=False,  # Disable sound for simplicity
-        emulation_speed=emulation_speed,  # Use the provided emulation speed
+        game_config.rom_path,
+        headless=True,
+        sound_emulated=False,
+        emulation_speed=game_config.emulation_speed,
     )
 
     client = openai.OpenAI(
@@ -224,15 +214,14 @@ def main():
         gb.start()
         gb.tick(60)  # Wait for game to load (1 second at 60 FPS)
 
-        # Setup for screenshots with timestamped directory
         experiment_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         screenshots_dir = f"screenshots/{experiment_id}"
 
         last_save_time = time.time()
         screenshot_counter = 0
 
-        # Main loop parameters
-        N = 100  # Make a decision every 30 frames
+        # Decisions every 30 frames
+        N = 30
         notes = ""
         frame_count = 0
         running = True
@@ -242,11 +231,9 @@ def main():
 
         while running:
             if frame_count % N == 0:
-                # Get the current screen
                 screen = gb.get_screen_np()
                 base64_image = encode_image(screen)
 
-                # Construct user message with past actions and current frame
                 user_content = {
                     "role": "user",
                     "content": [
@@ -290,7 +277,6 @@ def main():
 
                 messages.append(user_content)
 
-                # Send request to LLM via OpenAI API
                 response = client.chat.completions.create(
                     model="grok-2-vision-latest",
                     messages=messages,
@@ -318,8 +304,6 @@ def main():
                         ],
                     }
                 )
-
-                # Parse the LLM's response for multiple functions
 
                 tool_names = [
                     t.function.name for t in response.choices[0].message.tool_calls
@@ -356,19 +340,15 @@ def main():
                             {"role": "assistant", "content": "I press no button"}
                         )
 
-                    # Execute the current action
                     gb.press_and_tick([tools_map[b] for b in current_buttons])
                 else:
                     gb.tick(wait_frames)
 
-            # Display screen every 20 frames
             if frame_count % 20 == 0:
-                screen = gb.get_screen_np()
-                # Check if user wants to quit
+                screen = gb.get_screen_np()  # Check if user wants to quit
                 if display_screen(screen):
                     running = False
 
-            # Save screenshot every 10 seconds
             current_time = time.time()
             if current_time - last_save_time > 10:
                 screen = gb.get_screen_np()
@@ -378,11 +358,11 @@ def main():
                 last_save_time = current_time
 
             frame_count += 1
-            if len(history) % 2 == 100:
-                check_progress(gb)
+            if len(history) % 2 == eval_interval:
+                eval_func(gb)
 
-            if len(history) // 2 > max_interactions:
-                print(f"Reached frame limit of {max_interactions}, stopping.")
+            if len(history) // 2 > game_config.max_steps:
+                print(f"Reached frame limit of {game_config.max_steps}, stopping.")
                 print(history)
                 running = False
 
@@ -393,6 +373,43 @@ def main():
     finally:
         gb.close()
         print("Game closed.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run Pokemon with LLM agent")
+    parser.add_argument("--rom", type=str, help="Path to the ROM file")
+    parser.add_argument(
+        "--speed", type=float, default=2.0, help="Emulation speed (default: 2.0)"
+    )
+    parser.add_argument(
+        "--interactions",
+        type=int,
+        default=10000,
+        help="Maximum number of interactions  to run (default: 10000)",
+    )
+    args = parser.parse_args()
+
+    rom_path = args.rom or os.getenv("ROM_PATH")
+    if not rom_path:
+        print(
+            "Error: ROM path not provided. Use --rom argument or set ROM_PATH in .env file"
+        )
+        return
+
+    emulation_speed = args.speed
+    max_interactions = args.interactions
+
+    print(f"ROM path: {rom_path}")
+    print(f"Emulation speed: {emulation_speed}x")
+    print(f"Max interactions: {max_interactions}")
+
+    game_config = GameConfig(
+        rom_path=rom_path,
+        max_steps=max_interactions,
+        emulation_speed=emulation_speed,
+    )
+
+    run_game(game_config, check_progress_pokemon_red)
 
 
 if __name__ == "__main__":
